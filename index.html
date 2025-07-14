@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Matrix Tetris</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #0a0a1a;
+            overflow-x: hidden;
+            color: white;
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 5px rgb(42, 129, 129), 0 0 10px #0ff, 0 0 15px #0ff;
+        }
+        
+        .neon-border {
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff inset;
+            border: 1px solid #0ff;
+            transition: all 0.3s ease;
+        }
+        
+        .neon-border:hover {
+            box-shadow: 0 0 15px #0ff, 0 0 25px #0ff inset;
+        }
+        
+        .grid-cell {
+            transition: all 0.1s ease;
+            border-radius: 2px;
+        }
+        
+        .tetromino-I {
+            background-color: #00f7ff;
+            box-shadow: 0 0 10px #00f7ff;
+        }
+        
+        .tetromino-O {
+            background-color: #ffee00;
+            box-shadow: 0 0 10px #ffee00;
+        }
+        
+        .tetromino-T {
+            background-color: #ff00f7;
+            box-shadow: 0 0 10px #ff00f7;
+        }
+        
+        .tetromino-J {
+            background-color: #0066ff;
+            box-shadow: 0 0 10px #0066ff;
+        }
+        
+        .tetromino-L {
+            background-color: #ff7700;
+            box-shadow: 0 0 10px #ff7700;
+        }
+        
+        .tetromino-S {
+            background-color: #00ff44;
+            box-shadow: 0 0 10px #00ff44;
+        }
+        
+        .tetromino-Z {
+            background-color: #ff0033;
+            box-shadow: 0 0 10px #ff0033;
+        }
+        
+        .ghost-piece {
+             opacity: 0.8;
+            background-color: rgb(235, 227, 227);
+            box-shadow: 0 0 5px rgb(202, 243, 243);
+        }
+        
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            background-image: 
+                linear-gradient(rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+            100% { opacity: 0.7; transform: scale(1); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .game-container {
+            perspective: 1000px;
+        }
+        
+        .game-board {
+            transform-style: preserve-3d;
+            transform: rotateX(10deg);
+        }
+        
+        .next-piece-container {
+            transform-style: preserve-3d;
+            transform: rotateX(10deg) rotateY(10deg);
+        }
+        
+        @keyframes lineClear {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .line-clear {
+            animation: lineClear 0.3s 2;
+        }
+        
+        @keyframes scorePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .score-pop {
+            animation: scorePop 0.3s;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes neonFlicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+                text-shadow: 0 0 5px #0ff, 0 0 10px #0ff, 0 0 15px #0ff;
+            }
+            20%, 24%, 55% {
+                text-shadow: none;
+            }
+        }
+        
+        .neon-flicker {
+            animation: neonFlicker 1.5s infinite alternate;
+        }
+        
+        .glow-on-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .glow-on-hover:hover {
+            box-shadow: 0 0 15px currentColor;
+        }
+        
+        .particle {
+            position: absolute;
+            background-color: #0ff;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background-color: #f00;
+            opacity: 0.8;
+            z-index: 100;
+            animation: confettiFall 5s linear forwards;
+        }
+        
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+        
+        .level-up {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 5rem;
+            font-weight: bold;
+            color: #ff0;
+            text-shadow: 0 0 10px #ff0, 0 0 20px #ff0, 0 0 30px #ff0;
+            opacity: 0;
+            z-index: 100;
+            pointer-events: none;
+            animation: levelUp 2s ease-out;
+            text-transform: uppercase;
+            letter-spacing: 0.5rem;
+        }
+        
+        @keyframes levelUp {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            20% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+        
+        .combo-counter {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            font-size: 1.2rem;
+            color: #ff0;
+            text-shadow: 0 0 5px #ff0;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .combo-multiplier-pop {
+            animation: scorePop 0.3s;
+        }
+        
+        .combo-active {
+            opacity: 1;
+        }
+        
+        .tetris-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(0,255,255,0.2) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .active-effect {
+            opacity: 1;
+        }
+
+        /* Level Up Themes */
+        .level-up-theme-1 {
+            background-color: #1a0a2a;
+        }
+        .level-up-theme-1 .neon-border {
+            box-shadow: 0 0 10px #ff00f7, 0 0 20px #ff00f7 inset;
+            border: 1px solid #ff00f7;
+        }
+        .level-up-theme-1 .neon-border:hover {
+            box-shadow: 0 0 15px #ff00f7, 0 0 25px #ff00f7 inset;
+        }
+        .level-up-theme-1 .neon-text {
+            text-shadow: 0 0 5px #ff00f7, 0 0 10px #ff00f7, 0 0 15px #ff00f7;
+        }
+        .level-up-theme-1 .matrix-bg {
+            background-image: 
+                linear-gradient(rgba(255, 0, 247, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 247, 0.1) 1px, transparent 1px);
+        }
+
+        .level-up-theme-2 {
+            background-color: #0a1a1a;
+        }
+        .level-up-theme-2 .neon-border {
+            box-shadow: 0 0 10px #00ff44, 0 0 20px #00ff44 inset;
+            border: 1px solid #00ff44;
+        }
+        .level-up-theme-2 .neon-border:hover {
+            box-shadow: 0 0 15px #00ff44, 0 0 25px #00ff44 inset;
+        }
+        .level-up-theme-2 .neon-text {
+            text-shadow: 0 0 5px #00ff44, 0 0 10px #00ff44, 0 0 15px #00ff44;
+        }
+        .level-up-theme-2 .matrix-bg {
+            background-image: 
+                linear-gradient(rgba(0, 255, 68, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 68, 0.1) 1px, transparent 1px);
+        }
+
+        .level-up-theme-3 {
+            background-color: #1a0a0a;
+        }
+        .level-up-theme-3 .neon-border {
+            box-shadow: 0 0 10px #ff0033, 0 0 20px #ff0033 inset;
+            border: 1px solid #ff0033;
+        }
+        .level-up-theme-3 .neon-border:hover {
+            box-shadow: 0 0 15px #ff0033, 0 0 25px #ff0033 inset;
+        }
+        .level-up-theme-3 .neon-text {
+            text-shadow: 0 0 5px #ff0033, 0 0 10px #ff0033, 0 0 15px #ff0033;
+        }
+        .level-up-theme-3 .matrix-bg {
+            background-image: 
+                linear-gradient(rgba(255, 0, 51, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 51, 0.1) 1px, transparent 1px);
+        }
+
+        .level-up-theme-4 {
+            background-color: #1a1a0a;
+        }
+        .level-up-theme-4 .neon-border {
+            box-shadow: 0 0 10px #ffee00, 0 0 20px #ffee00 inset;
+            border: 1px solid #ffee00;
+        }
+        .level-up-theme-4 .neon-border:hover {
+            box-shadow: 0 0 15px #ffee00, 0 0 25px #ffee00 inset;
+        }
+        .level-up-theme-4 .neon-text {
+            text-shadow: 0 0 5px #ffee00, 0 0 10px #ffee00, 0 0 15px #ffee00;
+        }
+        .level-up-theme-4 .matrix-bg {
+            background-image: 
+                linear-gradient(rgba(255, 238, 0, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 238, 0, 0.1) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="fixed top-4 right-4 z-50">
+  <button id="sound-toggle" class="bg-gray-800 text-white px-4 py-2 rounded-full glow-on-hover">
+    <i class="fas fa-volume-up"></i>
+  </button>
+</div>
+
+<canvas id="particle-bg" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+    <div class="tetris-effect" id="tetris-effect"></div>
+    
+    <div class="min-h-screen flex flex-col items-center justify-center p-4 relative">
+        <!-- Floating particles background -->
+        <div id="particles-container" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+        
+        <header class="text-center mb-8">
+            <h1 class="text-5xl md:text-6xl font-bold text-white neon-text neon-flicker mb-2 floating">NEON MATRIX TETRIS</h1>
+            <p class="text-lg text-cyan-300">A futuristic twist on the classic puzzle game</p>
+        </header>
+        
+        <div class="flex flex-col lg:flex-row items-center justify-center gap-8 w-full max-w-6xl">
+            <!-- Game Board -->
+            <div class="game-container relative">
+                <div class="combo-counter" id="combo-counter"></div>
+                <div class="game-board neon-border bg-black bg-opacity-50 p-1 rounded-lg">
+                    <div id="game-grid" class="grid grid-cols-10 gap-0.5"></div>
+                </div>
+            </div>
+            
+            <!-- Game Controls and Info -->
+            <div class="flex flex-col gap-6 w-full lg:w-auto">
+                <!-- Score and Level -->
+                <div class="neon-border bg-black bg-opacity-50 p-4 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-cyan-900/20 to-transparent"></div>
+                    <div class="flex justify-between mb-4 relative z-10">
+                        <div>
+                            <p class="text-cyan-300 text-sm">SCORE</p>
+                            <p id="score" class="text-white text-3xl font-bold">0</p>
+                            <p id="combo-multiplier" class="text-xs text-yellow-300 hidden">x<span>1</span></p>
+                        </div>
+                        <div>
+                            <p class="text-cyan-300 text-sm">LEVEL</p>
+                            <p id="level" class="text-white text-3xl font-bold">1</p>
+                        </div>
+                        <div>
+                            <p class="text-cyan-300 text-sm">LINES</p>
+                            <p id="lines" class="text-white text-3xl font-bold">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center gap-4 relative z-10">
+                        <button id="start-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded-full font-bold transition-all pulse glow-on-hover">
+                            <i class="fas fa-play mr-2"></i> START
+                        </button>
+                        <button id="pause-btn" class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-full font-bold transition-all glow-on-hover" disabled>
+                            <i class="fas fa-pause mr-2"></i> PAUSE
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Next Piece -->
+                <div class="neon-border bg-black bg-opacity-50 p-4 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-purple-900/20 to-transparent"></div>
+                    <div class="relative z-10">
+                        <h3 class="text-cyan-300 text-center mb-2">NEXT PIECE</h3>
+                        <div class="next-piece-container flex justify-center">
+                            <div id="next-piece" class="grid grid-cols-4 gap-0.5 w-24 h-24"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controls -->
+                <div class="neon-border bg-black bg-opacity-50 p-4 rounded-lg relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-transparent via-pink-900/20 to-transparent"></div>
+                    <div class="relative z-10">
+                        <h3 class="text-cyan-300 text-center mb-3">CONTROLS</h3>
+                        <div class="grid grid-cols-3 gap-2 text-white text-center">
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover"><i class="fas fa-arrow-up"></i></div>
+                                <p class="text-xs">Rotate</p>
+                            </div>
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover"><i class="fas fa-arrow-left"></i></div>
+                                <p class="text-xs">Left</p>
+                            </div>
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover"><i class="fas fa-arrow-right"></i></div>
+                                <p class="text-xs">Right</p>
+                            </div>
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover"><i class="fas fa-arrow-down"></i></div>
+                                <p class="text-xs">Soft Drop</p>
+                            </div>
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover">Space</div>
+                                <p class="text-xs">Hard Drop</p>
+                            </div>
+                            <div class="p-2">
+                                <div class="bg-gray-800 rounded p-2 mb-1 glow-on-hover">P</div>
+                                <p class="text-xs">Pause</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile Controls -->
+        <div class="lg:hidden w-full max-w-md mt-6">
+            <div class="neon-border bg-black bg-opacity-50 p-4 rounded-lg mb-6">
+                <h3 class="text-cyan-300 text-center mb-3">TOUCH CONTROLS</h3>
+                <div class="grid grid-cols-5 gap-2 text-white text-center">
+                    <div class="col-span-5">
+                        <button id="rotate-btn" class="bg-gray-800 rounded p-4 w-full mb-1 glow-on-hover">
+                            <i class="fas fa-redo"></i> Rotate
+                        </button>
+                    </div>
+                    <div class="col-span-2">
+                        <button id="left-btn" class="bg-gray-800 rounded p-4 w-full mb-1 glow-on-hover">
+                            <i class="fas fa-arrow-left"></i> Left
+                        </button>
+                    </div>
+                    <div class="col-span-1">
+                        <button id="down-btn" class="bg-gray-800 rounded p-4 w-full mb-1 glow-on-hover">
+                            <i class="fas fa-arrow-down"></i> Down
+                        </button>
+                    </div>
+                    <div class="col-span-2">
+                        <button id="right-btn" class="bg-gray-800 rounded p-4 w-full mb-1 glow-on-hover">
+                            <i class="fas fa-arrow-right"></i> Right
+                        </button>
+                    </div>
+                    <div class="col-span-5">
+                        <button id="drop-btn" class="bg-gray-800 rounded p-4 w-full mb-1 glow-on-hover">
+                            <i class="fas fa-angle-double-down"></i> Hard Drop
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="neon-border bg-black bg-opacity-90 p-8 rounded-lg max-w-md w-full text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-transparent via-red-900/20 to-transparent"></div>
+            <div class="relative z-10">
+                <h2 class="text-4xl font-bold text-red-500 neon-text mb-4">GAME OVER (You are not A Sigma🤫)</h2>
+                <p class="text-white text-xl mb-6">Your final score: <span id="final-score" class="text-cyan-300">0</span></p>
+                <div class="flex justify-center gap-4">
+                    <button id="restart-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-3 rounded-full font-bold transition-all glow-on-hover">
+                        <i class="fas fa-redo mr-2"></i> PLAY AGAIN
+                    </button>
+                    <button id="quit-btn" class="bg-gray-600 hover:bg-gray-500 text-white px-6 py-3 rounded-full font-bold transition-all glow-on-hover">
+                        <i class="fas fa-times mr-2"></i> QUIT
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Level Up Animation -->
+    <div id="level-up-animation" class="level-up hidden">LEVEL UP!</div>
+    
+    <!-- Level Up Buff Selection -->
+    <div id="buff-selection-modal" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="neon-border bg-black bg-opacity-90 p-8 rounded-lg max-w-2xl w-full text-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-br from-transparent via-cyan-900/20 to-transparent"></div>
+            <div class="relative z-10">
+                <h2 class="text-3xl font-bold text-cyan-300 neon-text mb-6">CHOOSE YOUR BUFF</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="buff-options">
+                    <!-- Buff options will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Developer Profile -->
+    <footer class="text-center py-6 text-cyan-300">
+        <div class="container mx-auto">
+            <h3 class="text-xl font-bold mb-2 neon-text">DEVELOPED BY Rakhandhiya Fasya</h3>
+            <div class="flex justify-center space-x-4">
+                <a href="https://github.com/Rakhandhiyafa" class="hover:text-white transition-colors glow-on-hover" id="github-btn">
+                    <i class="fab fa-github text-2xl"></i>
+                </a>
+                <a href="https://www.linkedin.com/in/rakhandhiya/" class="hover:text-white transition-colors glow-on-hover" id="linkedin-btn">
+                    <i class="fab fa-linkedin text-2xl"></i>
+                </a>
+                <a href="https://www.instagram.com/rakhandhiyafa/" class="hover:text-white transition-colors glow-on-hover" id="instagram-btn">
+                    <i class="fab fa-instagram text-2xl"></i>
+                </a>
+            </div>
+            <p class="mt-2 text-sm">© 2025 Neon Matrix Tetris</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game constants
+            const COLS = 10;
+            const ROWS = 20;
+            
+            // Buff definitions
+            const BUFFS = [
+                {
+                    name: "Speed Boost",
+                    description: "Increase drop speed by 10%",
+                    icon: "fas fa-bolt",
+                    apply: () => { gameSpeed = Math.max(50, gameSpeed * 0.9); clearInterval(gameInterval); gameInterval = setInterval(gameLoop, gameSpeed); }
+                },
+                {
+                    name: "Score Multiplier",
+                    description: "Earn 1.5x more points",
+                    icon: "fas fa-star",
+                    apply: () => { scoreMultiplier = 1.5; }
+                },
+                {
+                    name: "Combo Time+",
+                    description: "Combo window extended by 2s",
+                    icon: "fas fa-hourglass-half",
+                    apply: () => { comboWindow = 7000; }
+                },
+                {
+                    name: "Piece Preview",
+                    description: "See next 2 pieces",
+                    icon: "fas fa-chess",
+                    apply: () => { showNextTwoPieces = true; updateNextPieceDisplay(); }
+                },
+                {
+                    name: "Slow Time",
+                    description: "Slow down time for hard drops",
+                    icon: "fas fa-clock",
+                    apply: () => { hasSlowTime = true; }
+                },
+                {
+                    name: "Clear Row",
+                    description: "Instantly clear one row",
+                    icon: "fas fa-trash",
+                    apply: () => { clearRandomRow(); }
+                }
+            ];
+            const BLOCK_SIZE = 30;
+            const NEXT_PIECE_SIZE = 4;
+            
+            // Game variables
+            let score = 0;
+            let level = 1;
+            let lines = 0;
+            let gameInterval;
+            let gameSpeed = 1000; // Initial speed (ms)
+            let isPaused = false;
+            let isGameOver = false;
+            let gameBoard = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            let comboCount = 0;
+            let lastClearTime = 0;
+            let comboMultiplier = 1;
+            let comboTimeout;
+            let scoreMultiplier = 1;
+            let comboWindow = 5000;
+            let showNextTwoPieces = false;
+            let hasSlowTime = false;
+            let nextNextPiece = null;
+            
+            // Current and next tetromino
+            let currentPiece = null;
+            let nextPiece = null;
+            
+            // Tetromino shapes
+            const SHAPES = {
+                I: [
+                    [0, 0, 0, 0],
+                    [1, 1, 1, 1],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0]
+                ],
+                O: [
+                    [1, 1],
+                    [1, 1]
+                ],
+                T: [
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                J: [
+                    [1, 0, 0],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                L: [
+                    [0, 0, 1],
+                    [1, 1, 1],
+                    [0, 0, 0]
+                ],
+                S: [
+                    [0, 1, 1],
+                    [1, 1, 0],
+                    [0, 0, 0]
+                ],
+                Z: [
+                    [1, 1, 0],
+                    [0, 1, 1],
+                    [0, 0, 0]
+                ]
+            };
+            
+            const COLORS = {
+                I: 'tetromino-I',
+                O: 'tetromino-O',
+                T: 'tetromino-T',
+                J: 'tetromino-J',
+                L: 'tetromino-L',
+                S: 'tetromino-S',
+                Z: 'tetromino-Z'
+            };
+            
+            const TETROMINO_KEYS = Object.keys(SHAPES);
+            
+            // Initialize game grid
+            const gameGrid = document.getElementById('game-grid');
+            const nextPieceGrid = document.getElementById('next-piece');
+            const comboCounter = document.getElementById('combo-counter');
+            const tetrisEffect = document.getElementById('tetris-effect');
+            
+            // Create floating particles
+            function createParticles() {
+                const container = document.getElementById('particles-container');
+                const particleCount = 30;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // Random size between 1px and 3px
+                    const size = Math.random() * 2 + 1;
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    
+                    // Random position
+                    particle.style.left = `${Math.random() * 100}%`;
+                    particle.style.top = `${Math.random() * 100}%`;
+                    
+                    // Random animation
+                    const duration = Math.random() * 20 + 10;
+                    const delay = Math.random() * 5;
+                    particle.style.animation = `float ${duration}s ease-in-out ${delay}s infinite`;
+                    
+                    container.appendChild(particle);
+                }
+            }
+            
+            // Create confetti effect
+            function createConfetti() {
+                const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+                
+                for (let i = 0; i < 50; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = `${Math.random() * 100}%`;
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.width = `${Math.random() * 10 + 5}px`;
+                    confetti.style.height = `${Math.random() * 10 + 5}px`;
+                    confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                    
+                    document.body.appendChild(confetti);
+                    
+                    // Remove confetti after animation
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }
+            }
+            
+            // Show level up animation
+            function showLevelUp() {
+                const levelUp = document.getElementById('level-up-animation');
+                levelUp.classList.remove('hidden');
+                
+                // Choose theme based on current level (cycles through 4 themes)
+                const themeClass = `level-up-theme-${(level % 4) + 1}`;
+                
+                // Activate level up theme
+                document.body.classList.add(themeClass);
+                
+                setTimeout(() => {
+                    levelUp.classList.add('hidden');
+                }, 2000);
+            }
+            
+            // Update combo counter
+            function updateComboCounter() {
+                if (comboCount > 0) {
+                    comboCounter.textContent = `COMBO x${comboCount}`;
+                    comboCounter.classList.add('combo-active');
+                } else {
+                    comboCounter.classList.remove('combo-active');
+                }
+            }
+            
+            // Update combo multiplier display
+            function updateComboMultiplier() {
+                const multiplierElement = document.getElementById('combo-multiplier');
+                const multiplierValue = multiplierElement.querySelector('span');
+                
+                multiplierValue.textContent = comboMultiplier.toFixed(1);
+                multiplierElement.classList.remove('hidden', 'combo-multiplier-pop');
+                void multiplierElement.offsetWidth; // Trigger reflow
+                multiplierElement.classList.add('combo-multiplier-pop');
+            }
+            
+            // Reset combo multiplier after delay
+            function resetComboMultiplier() {
+                clearTimeout(comboTimeout);
+                comboTimeout = setTimeout(() => {
+                    comboMultiplier = 1;
+                    document.getElementById('combo-multiplier').classList.add('hidden');
+                }, 3000);
+            }
+            
+            // Create click effect
+            function createClickEffect(x, y, color = '#0ff') {
+                const effect = document.createElement('div');
+                effect.className = 'particle';
+                effect.style.left = `${x}px`;
+                effect.style.top = `${y}px`;
+                effect.style.backgroundColor = color;
+                effect.style.width = '10px';
+                effect.style.height = '10px';
+                effect.style.opacity = '1';
+                effect.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                document.body.appendChild(effect);
+                
+                // Animate
+                const animation = effect.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                    { transform: 'translate(-50%, -50%) scale(3)', opacity: 0 }
+                ], {
+                    duration: 500,
+                    easing: 'ease-out'
+                });
+                
+                animation.onfinish = () => effect.remove();
+            }
+            
+            // Initialize game grids
+            function initGrid() {
+                gameGrid.innerHTML = '';
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 bg-gray-900';
+                        cell.id = `cell-${row}-${col}`;
+                        gameGrid.appendChild(cell);
+                    }
+                }
+            }
+            
+            function initNextPieceGrid() {
+                nextPieceGrid.innerHTML = '';
+                for (let row = 0; row < NEXT_PIECE_SIZE; row++) {
+                    for (let col = 0; col < NEXT_PIECE_SIZE; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell w-6 h-6 bg-gray-900';
+                        cell.id = `next-cell-${row}-${col}`;
+                        nextPieceGrid.appendChild(cell);
+                    }
+                }
+            }
+            
+            // Create a new random tetromino
+            function createPiece() {
+                const type = TETROMINO_KEYS[Math.floor(Math.random() * TETROMINO_KEYS.length)];
+                const shape = SHAPES[type];
+                const color = COLORS[type];
+                
+                return {
+                    shape,
+                    color,
+                    type,
+                    x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
+                    y: 0
+                };
+            }
+            
+            // Draw the game board
+            function drawBoard() {
+                for (let row = 0; row < ROWS; row++) {
+                    for (let col = 0; col < COLS; col++) {
+                        const cell = document.getElementById(`cell-${row}-${col}`);
+                        cell.className = 'grid-cell w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8';
+                        
+                        if (gameBoard[row][col]) {
+                            cell.classList.add(gameBoard[row][col]);
+                        }
+                    }
+                }
+            }
+            
+            // Draw the current piece
+            function drawPiece() {
+                if (!currentPiece) return;
+                
+                for (let row = 0; row < currentPiece.shape.length; row++) {
+                    for (let col = 0; col < currentPiece.shape[row].length; col++) {
+                        if (currentPiece.shape[row][col]) {
+                            const boardRow = currentPiece.y + row;
+                            const boardCol = currentPiece.x + col;
+                            
+                            if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
+                                const cell = document.getElementById(`cell-${boardRow}-${boardCol}`);
+                                cell.className = `grid-cell w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 ${currentPiece.color}`;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            function drawGhostPiece() {
+    if (!currentPiece) return;
+
+    let ghostY = currentPiece.y;
+    while (!collision(currentPiece.x, ghostY + 1, currentPiece)) {
+        ghostY++;
+    }
+
+    for (let row = 0; row < currentPiece.shape.length; row++) {
+        for (let col = 0; col < currentPiece.shape[row].length; col++) {
+            if (currentPiece.shape[row][col]) {
+                const boardRow = ghostY + row;
+                const boardCol = currentPiece.x + col;
+
+                if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
+                    const cell = document.getElementById(`cell-${boardRow}-${boardCol}`);
+                    cell.classList.add('ghost-piece');
+                }
+            }
+        }
+    }
+}
+
+            // Draw the next piece preview
+            function drawNextPiece() {
+                if (!nextPiece) return;
+                
+                // Clear next piece grid
+                for (let row = 0; row < NEXT_PIECE_SIZE; row++) {
+                    for (let col = 0; col < NEXT_PIECE_SIZE; col++) {
+                        const cell = document.getElementById(`next-cell-${row}-${col}`);
+                        cell.className = 'grid-cell w-6 h-6 bg-gray-900';
+                    }
+                }
+                
+                // Center the next piece in the preview
+                const offsetX = Math.floor((NEXT_PIECE_SIZE - nextPiece.shape[0].length) / 2);
+                const offsetY = Math.floor((NEXT_PIECE_SIZE - nextPiece.shape.length) / 2);
+                
+                for (let row = 0; row < nextPiece.shape.length; row++) {
+                    for (let col = 0; col < nextPiece.shape[row].length; col++) {
+                        if (nextPiece.shape[row][col]) {
+                            const previewRow = row + offsetY;
+                            const previewCol = col + offsetX;
+                            
+                            if (previewRow >= 0 && previewRow < NEXT_PIECE_SIZE && previewCol >= 0 && previewCol < NEXT_PIECE_SIZE) {
+                                const cell = document.getElementById(`next-cell-${previewRow}-${previewCol}`);
+                                cell.className = `grid-cell w-6 h-6 ${nextPiece.color}`;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Check for collisions
+            function collision(x, y, piece) {
+                for (let row = 0; row < piece.shape.length; row++) {
+                    for (let col = 0; col < piece.shape[row].length; col++) {
+                        if (!piece.shape[row][col]) continue;
+                        
+                        const newX = x + col;
+                        const newY = y + row;
+                        
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) {
+                            return true;
+                        }
+                        
+                        if (newY >= 0 && gameBoard[newY][newX]) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // Rotate the current piece
+            function rotatePiece() {
+                if (!currentPiece || isPaused || isGameOver) return;
+                
+                const originalShape = currentPiece.shape;
+                const rows = originalShape.length;
+                const cols = originalShape[0].length;
+                
+                // Transpose and reverse each row to rotate 90 degrees clockwise
+                const rotated = Array(cols).fill().map((_, i) => 
+                    Array(rows).fill().map((_, j) => originalShape[rows - 1 - j][i])
+                );
+                
+                const originalX = currentPiece.x;
+                const originalY = currentPiece.y;
+                
+                // Wall kick - try adjacent positions if rotation causes collision
+                const kicks = [
+                    { x: 0, y: 0 },
+                    { x: -1, y: 0 },
+                    { x: 1, y: 0 },
+                    { x: 0, y: -1 }
+                ];
+                
+                for (const kick of kicks) {
+                    if (!collision(originalX + kick.x, originalY + kick.y, { ...currentPiece, shape: rotated })) {
+                        currentPiece.shape = rotated;
+                        currentPiece.x += kick.x;
+                        currentPiece.y += kick.y;
+                        updateGame();
+                        
+                        // Create rotation effect
+                        const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
+                        const centerX = gameBoardRect.left + gameBoardRect.width / 2;
+                        const centerY = gameBoardRect.top + gameBoardRect.height / 2;
+                        createClickEffect(centerX, centerY, '#ff00f7');
+                        
+                        return;
+                    }
+                }
+            }
+            
+            // Move the current piece
+            function movePiece(dx, dy) {
+                if (!currentPiece || isPaused || isGameOver) return;
+                
+                if (!collision(currentPiece.x + dx, currentPiece.y + dy, currentPiece)) {
+                    currentPiece.x += dx;
+                    currentPiece.y += dy;
+                    updateGame();
+                    return true;
+                }
+                return false;
+            }
+            
+            // Hard drop the current piece
+            function hardDrop() {
+                if (hasSlowTime) {
+                    // Slow motion effect
+                    const originalSpeed = gameSpeed;
+                    gameSpeed = 300;
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameLoop, gameSpeed);
+                    
+                    // Return to normal speed after drop
+                    setTimeout(() => {
+                        gameSpeed = originalSpeed;
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                    }, 1000);
+                }
+                if (!currentPiece || isPaused || isGameOver) return;
+                
+                let dropDistance = 0;
+                while (!collision(currentPiece.x, currentPiece.y + dropDistance + 1, currentPiece)) {
+                    dropDistance++;
+                }
+                
+                if (dropDistance > 0) {
+                    currentPiece.y += dropDistance;
+                    
+                    // Create drop effect
+                    for (let i = 0; i < 5; i++) {
+                        setTimeout(() => {
+                            const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
+                            const x = gameBoardRect.left + (Math.random() * gameBoardRect.width);
+                            const y = gameBoardRect.bottom - (Math.random() * 50);
+                            createClickEffect(x, y, '#00ff44');
+                        }, i * 50);
+                    }
+                    
+                    placePiece();
+                }
+            }
+            
+            // Place the current piece on the board
+            function placePiece() {
+                for (let row = 0; row < currentPiece.shape.length; row++) {
+                    for (let col = 0; col < currentPiece.shape[row].length; col++) {
+                        if (currentPiece.shape[row][col]) {
+                            const boardRow = currentPiece.y + row;
+                            const boardCol = currentPiece.x + col;
+                            
+                            if (boardRow >= 0 && boardRow < ROWS && boardCol >= 0 && boardCol < COLS) {
+                                gameBoard[boardRow][boardCol] = currentPiece.color;
+                            }
+                        }
+                    }
+                }
+                
+                // Check for completed lines
+                checkLines();
+                
+                // Get next piece or end game if collision at spawn
+                currentPiece = nextPiece;
+                nextPiece = createPiece();
+                
+                if (collision(currentPiece.x, currentPiece.y, currentPiece)) {
+                    gameOver();
+                }
+                
+                updateGame();
+            }
+            
+            // Check for completed lines
+            function checkLines() {
+                let linesCleared = 0;
+                const now = Date.now();
+                
+                // Check if we're in a combo (cleared lines within last 5 seconds)
+                if (now - lastClearTime < 5000) {
+                    comboCount++;
+                } else {
+                    comboCount = 0;
+                }
+                
+                lastClearTime = now;
+                
+                for (let row = ROWS - 1; row >= 0; row--) {
+                    if (gameBoard[row].every(cell => cell !== 0)) {
+                        // Highlight the line before clearing
+                        for (let col = 0; col < COLS; col++) {
+                            const cell = document.getElementById(`cell-${row}-${col}`);
+                            cell.classList.add('line-clear');
+                        }
+                        
+                        // Remove the line
+                        gameBoard.splice(row, 1);
+                        // Add new empty line at top
+                        gameBoard.unshift(Array(COLS).fill(0));
+                        linesCleared++;
+                        row++; // Check the same row again (now with new content)
+                    }
+                }
+                
+                if (linesCleared > 0) {
+                    // Update score based on lines cleared with combo multiplier
+                    const linePoints = [0, 40, 100, 300, 1200];
+                    const comboBonus = comboCount * 50;
+                    score += (linePoints[linesCleared] * level * comboMultiplier * scoreMultiplier) + comboBonus;
+                    
+                    // Increase combo multiplier
+                    comboMultiplier = Math.min(10, comboMultiplier + 0.5);
+                    updateComboMultiplier();
+                    lines += linesCleared;
+                    
+                    // Special effect for Tetris (4 lines)
+                    if (linesCleared === 4) {
+                        tetrisEffect.classList.add('active-effect');
+                        setTimeout(() => {
+                            tetrisEffect.classList.remove('active-effect');
+                        }, 1000);
+                        createConfetti();
+                    }
+                    
+                    // Level up every 10 lines
+                    const newLevel = Math.floor(lines / 10) + 1;
+                    if (newLevel > level) {
+                        level = newLevel;
+                        // Increase game speed (capped at 100ms)
+                        gameSpeed = Math.max(100, 1000 - (level - 1) * 100);
+                        clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, gameSpeed);
+                        
+                        // Show level up animation
+                        showLevelUp();
+                        
+                        // Show buff selection after animation
+                        setTimeout(showBuffSelection, 2000);
+                    }
+                    
+                    updateScore();
+                    updateComboCounter();
+                } else {
+                    comboCount = 0;
+                    updateComboCounter();
+                }
+            }
+            
+            // Update the score display
+            function updateScore() {
+                const scoreElement = document.getElementById('score');
+                scoreElement.textContent = score;
+                scoreElement.classList.add('score-pop');
+                
+                setTimeout(() => {
+                    scoreElement.classList.remove('score-pop');
+                }, 300);
+                
+                document.getElementById('level').textContent = level;
+                document.getElementById('lines').textContent = lines;
+            }
+            
+            // Game loop
+            function gameLoop() {
+                if (isPaused || isGameOver) return;
+                
+                if (!movePiece(0, 1)) {
+                    placePiece();
+                }
+            }
+            
+            // Update the game display
+            function updateGame() {
+                drawBoard();
+                drawGhostPiece();
+                drawPiece();
+                drawNextPiece();
+            }
+            
+            // Show buff selection
+            function showBuffSelection() {
+                const modal = document.getElementById('buff-selection-modal');
+                const optionsContainer = document.getElementById('buff-options');
+                
+                // Pause the game while selecting buff
+                isPaused = true;
+                document.getElementById('pause-btn').innerHTML = '<i class="fas fa-play mr-2"></i> RESUME';
+                
+                // Clear previous options
+                optionsContainer.innerHTML = '';
+                
+                // Get 3 random unique buffs
+                const shuffled = [...BUFFS].sort(() => 0.5 - Math.random());
+                const selectedBuffs = shuffled.slice(0, 3);
+                
+                // Create option cards that apply buff immediately on click
+                selectedBuffs.forEach((buff, index) => {
+                    const option = document.createElement('div');
+                    option.className = 'neon-border bg-black bg-opacity-50 p-4 rounded-lg cursor-pointer hover:bg-cyan-900/20 transition-all';
+                    option.innerHTML = `
+                        <div class="text-cyan-300 text-3xl mb-2"><i class="${buff.icon}"></i></div>
+                        <h3 class="text-xl font-bold text-white mb-2">${buff.name}</h3>
+                        <p class="text-sm text-gray-300 mb-2">${buff.description}</p>
+                    `;
+                    
+                    option.addEventListener('click', () => {
+                        // Apply the buff immediately
+                        buff.apply();
+                        
+                        // Show feedback and close modal
+                        modal.querySelector('h2').textContent = 'BUFF ACTIVATED!';
+                        optionsContainer.innerHTML = `
+                            <div class="col-span-3 text-center py-8">
+                                <div class="text-5xl text-cyan-300 mb-4"><i class="${buff.icon}"></i></div>
+                                <h3 class="text-2xl font-bold text-white mb-2">${buff.name}</h3>
+                                <p class="text-lg text-gray-300">${buff.description}</p>
+                            </div>
+                        `;
+                        
+                        createConfetti();
+                        
+                        // Close modal after delay
+                        setTimeout(() => {
+                            modal.classList.add('hidden');
+                            
+                            // Resume the game after selecting buff
+                            isPaused = false;
+                            document.getElementById('pause-btn').innerHTML = '<i class="fas fa-pause mr-2"></i> PAUSE';
+                            updateGame();
+                        }, 2000);
+                    });
+                    
+                    optionsContainer.appendChild(option);
+                });
+                
+                modal.classList.remove('hidden');
+            }
+            
+            // Clear the bottom row and shift all rows down
+            function clearRandomRow() {
+                // Clear the bottom row
+                gameBoard[ROWS - 1] = Array(COLS).fill(0);
+                
+                // Shift all rows above down by one
+                for (let row = ROWS - 1; row > 0; row--) {
+                    gameBoard[row] = [...gameBoard[row - 1]];
+                }
+                
+                // Clear the new top row
+                gameBoard[0] = Array(COLS).fill(0);
+                
+                drawBoard();
+                
+                // Visual effect on bottom row
+                for (let col = 0; col < COLS; col++) {
+                    const cell = document.getElementById(`cell-${ROWS - 1}-${col}`);
+                    cell.classList.add('line-clear');
+                }
+            }
+            
+            // Update next piece display to show 2 pieces if enabled
+            function updateNextPieceDisplay() {
+                if (showNextTwoPieces) {
+                    // Need to modify the next piece grid to show both pieces
+                    // Implementation would go here
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                isGameOver = true;
+                clearInterval(gameInterval);
+                
+                document.getElementById('final-score').textContent = score;
+                document.getElementById('game-over-modal').classList.remove('hidden');
+                
+                // Create game over effect
+                for (let i = 0; i < 20; i++) {
+                    setTimeout(() => {
+                        const gameBoardRect = document.querySelector('.game-board').getBoundingClientRect();
+                        const x = gameBoardRect.left + (Math.random() * gameBoardRect.width);
+                        const y = gameBoardRect.top + (Math.random() * gameBoardRect.height);
+                        createClickEffect(x, y, '#ff0033');
+                    }, i * 100);
+                }
+            }
+            
+            // Start a new game
+            function startGame() {
+                // Reset game state and theme
+                score = 0;
+                level = 1;
+                lines = 0;
+                comboCount = 0;
+                gameSpeed = 1000;
+                isPaused = false;
+                isGameOver = false;
+                gameBoard = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+                
+                // Remove any level up theme classes
+                document.body.classList.remove(
+                    'level-up-theme-1',
+                    'level-up-theme-2', 
+                    'level-up-theme-3',
+                    'level-up-theme-4'
+                );
+                
+                // Create pieces
+                currentPiece = createPiece();
+                nextPiece = createPiece();
+                
+                // Update UI
+                updateScore();
+                document.getElementById('pause-btn').disabled = false;
+                document.getElementById('pause-btn').innerHTML = '<i class="fas fa-pause mr-2"></i> PAUSE';
+                document.getElementById('start-btn').innerHTML = '<i class="fas fa-sync-alt mr-2"></i> RESTART';
+                document.getElementById('game-over-modal').classList.add('hidden');
+                updateComboCounter();
+                
+                // Start game loop
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, gameSpeed);
+                
+                updateGame();
+            }
+            
+            // Pause/resume game
+            function togglePause() {
+                if (isGameOver) return;
+                
+                isPaused = !isPaused;
+                document.getElementById('pause-btn').innerHTML = isPaused 
+                    ? '<i class="fas fa-play mr-2"></i> RESUME'
+                    : '<i class="fas fa-pause mr-2"></i> PAUSE';
+                
+                if (!isPaused) {
+                    updateGame();
+                }
+            }
+            
+            // Event listeners
+            document.addEventListener('keydown', (e) => {
+                if (isGameOver && e.key !== 'Enter') return;
+                
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        movePiece(-1, 0);
+                        break;
+                    case 'ArrowRight':
+                        movePiece(1, 0);
+                        break;
+                    case 'ArrowDown':
+                        movePiece(0, 1);
+                        break;
+                    case 'ArrowUp':
+                        rotatePiece();
+                        break;
+                    case ' ':
+                        hardDrop();
+                        break;
+                    case 'p':
+                    case 'P':
+                        togglePause();
+                        break;
+                    case 'Enter':
+                        if (isGameOver) {
+                            startGame();
+                        }
+                        break;
+                }
+            });
+            
+            // Button click effects
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const rect = button.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+                    createClickEffect(x, y);
+                });
+            });
+            
+            // Social media button effects
+            document.getElementById('github-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                createConfetti();
+                window.open('https://github.com/Rakhandhiyafa', '_blank');
+            });
+            
+            document.getElementById('linkedin-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                createConfetti();
+                window.open('https://www.linkedin.com/in/rakhandhiya/', '_blank');
+            });
+            
+            document.getElementById('instagram-btn').addEventListener('click', (e) => {
+                e.preventDefault();
+                createConfetti();
+                window.open('https://www.instagram.com/rakhandhiyafa/', '_blank');
+            });
+            
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('pause-btn').addEventListener('click', togglePause);
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+            
+            document.getElementById('quit-btn').addEventListener('click', () => {
+                document.getElementById('game-over-modal').classList.add('hidden');
+                
+                // Reset score display
+                document.getElementById('score').textContent = '0';
+                document.getElementById('level').textContent = '1';
+                document.getElementById('lines').textContent = '0';
+                
+                // Remove any level up theme classes
+                document.body.classList.remove(
+                    'level-up-theme-1',
+                    'level-up-theme-2', 
+                    'level-up-theme-3',
+                    'level-up-theme-4'
+                );
+            });
+            
+            // Mobile controls
+            document.getElementById('rotate-btn').addEventListener('click', rotatePiece);
+            document.getElementById('left-btn').addEventListener('click', () => movePiece(-1, 0));
+            document.getElementById('right-btn').addEventListener('click', () => movePiece(1, 0));
+            document.getElementById('down-btn').addEventListener('click', () => movePiece(0, 1));
+            document.getElementById('drop-btn').addEventListener('click', hardDrop);
+
+                // === SOUND TOGGLE LOGIC ===
+    const bgMusic = document.getElementById('bg-music');
+    const soundToggleBtn = document.getElementById('sound-toggle');
+    let soundEnabled = true;
+
+    soundToggleBtn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        const icon = soundToggleBtn.querySelector('i');
+
+        if (soundEnabled) {
+            icon.className = 'fas fa-volume-up';
+            bgMusic.play();
+        } else {
+            icon.className = 'fas fa-volume-mute';
+            bgMusic.pause();
+            bgMusic.currentTime = 0;
+        }
+    });
+
+            
+
+            
+            
+            // Initialize game
+            initGrid();
+            initNextPieceGrid();
+            createParticles();
+            updateGame();
+            
+        });
+        // === Neon Particle Background ===
+const canvasBg = document.getElementById('particle-bg');
+const ctxBg = canvasBg.getContext('2d');
+
+canvasBg.width = window.innerWidth;
+canvasBg.height = window.innerHeight;
+
+let particles = [];
+
+for (let i = 0; i < 60; i++) {
+    particles.push({
+        x: Math.random() * canvasBg.width,
+        y: Math.random() * canvasBg.height,
+        radius: Math.random() * 2 + 1,
+        speedX: (Math.random() - 0.5) * 0.5,
+        speedY: (Math.random() - 0.5) * 0.5
+    });
+}
+
+function drawParticles() {
+    ctxBg.clearRect(0, 0, canvasBg.width, canvasBg.height);
+
+    for (let p of particles) {
+        ctxBg.beginPath();
+        ctxBg.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctxBg.fillStyle = 'rgba(0, 255, 255, 0.8)';
+        ctxBg.shadowColor = '#0ff';
+        ctxBg.shadowBlur = 10;
+        ctxBg.fill();
+
+        p.x += p.speedX;
+        p.y += p.speedY;
+
+        if (p.x < 0 || p.x > canvasBg.width) p.speedX *= -1;
+        if (p.y < 0 || p.y > canvasBg.height) p.speedY *= -1;
+    }
+
+    requestAnimationFrame(drawParticles);
+}
+
+drawParticles();
+
+window.addEventListener('resize', () => {
+    canvasBg.width = window.innerWidth;
+    canvasBg.height = window.innerHeight;
+});
+
+
+    </script>
+    <!-- Audio files -->
+     <audio id="bg-music" src="sounds/Lenny Pixels - The Beat of Nuts n Bolts - 8bit.mp3" loop preload="auto"></audio>
+
+</body>
+</html>
