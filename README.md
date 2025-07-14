@@ -84,4 +84,6 @@ assets/
 2. Open `index.html` in any modern web browser
 3. Enjoy the neon-powered Tetris experience!
 
+OR
+Access this Link that i deployed: https://neon-matrix-tetris-rkhn.vercel.app/
 ---
