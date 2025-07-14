@@ -1,5 +1,3 @@
----
-
 # 🎮 Neon Matrix Tetris
 
 **Neon Matrix Tetris** is a feature-rich, visually immersive remake of the classic Tetris game — reimagined with futuristic neon visuals, glowing particle animations, and interactive sound & UI enhancements.
