@@ -1,5 +1,3 @@
-Here's a complete **README summary** for your GitHub repository, tailored for your project:
-
 ---
 
 # 🎮 Neon Matrix Tetris
